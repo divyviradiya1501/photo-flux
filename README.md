@@ -2,7 +2,7 @@
 
 **Photo Flux** is a modern, offline Windows desktop application designed to organize your photo collections effortlessly. Built with Electron, React, and TypeScript, it scans your directories, reads EXIF metadata, and reorganizes your images into a structured timeline (Year/Month) with options to rename and sort safely.
 
-![Photo Flux Banner](./screenshots/Screenshot (45).png)
+![Photo Flux Banner](./screenshots/Screenshot(45).png)
 *(Replace the link above with a screenshot of your application if available)*
 
 ## 🚀 Features
