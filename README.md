@@ -5,6 +5,16 @@
 ![Photo Flux Banner](screenshots/1.png)
 *(Replace the link above with a screenshot of your application if available)*
 
+## 📥 Download
+
+Get the latest Windows installer from the official Releases page.
+
+📥[Download Photo Flux](https://github.com/divyviradiya1501/photo-flux/releases/download/v1.0.0/Photo.Flux.Setup.1.0.0.exe)
+
+1. Click the button above or visit the [**Latest Release**](https://github.com/divyviradiya1501/photo-flux/releases/latest) page.
+2. Scroll down to the **Assets** section.
+3. Click on the Setup file (e.g., `Photo.Flux.Setup.1.0.0.exe`) to download.
+
 ## 🚀 Features
 
 * **Smart Scanning**: Recursively scans folders to detect image files.
@@ -52,58 +62,7 @@ Here is the full, formatted Markdown code for your README.md file. You can copy 
 
 Markdown
 
-# Photo Flux
 
-**Photo Flux** is a modern, offline Windows desktop application designed to organize your photo collections effortlessly. Built with Electron, React, and TypeScript, it scans your directories, reads EXIF metadata, and reorganizes your images into a structured timeline (Year/Month) with options to rename and sort safely.
-
-![Photo Flux Banner](https://via.placeholder.com/1000x300?text=Photo+Flux+Application)
-*(Replace the link above with a screenshot of your application if available)*
-
-## 🚀 Features
-
-* **Smart Scanning**: Recursively scans folders to detect image files.
-* **Metadata Analysis**: Reads EXIF data to determine the original capture date of photos.
-* **Flexible Organization**:
-    * **Group by**: Year Only or Year & Month.
-    * **Action**: Copy files (safe mode) or Move files (cleanup mode).
-    * **Renaming**: Keep original filenames or prepend the capture date (e.g., `2023-12-25_IMG001.jpg`).
-* **Review Plan**: Preview the organization plan, detect duplicates, and identify conflicts before executing.
-* **Safe Execution**: Real-time progress tracking with a summary of successes and failures.
-* **Revert Capability**: Undo the last organization operation if you change your mind.
-* **Modern UI**: Features a sleek, "glassmorphism" design with smooth page transitions and animations.
-
-## 🛠️ Tech Stack
-
-* **Core**: [Electron](https://www.electronjs.org/)
-* **Frontend**: [React](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/)
-* **Build Tool**: [Electron-Vite](https://electron-vite.org/)
-* **Styling**: CSS Modules (Glassmorphism effects)
-* **Icons**: [Lucide React](https://lucide.dev/)
-* **Metadata**: [exifr](https://github.com/MikeKovarik/exifr)
-
-## 📋 Prerequisites
-
-Before you begin, ensure you have the following installed on your machine:
-* [Node.js](https://nodejs.org/) (v18 or higher recommended)
-* [npm](https://www.npmjs.com/) (usually comes with Node.js)
-
-## 💻 Getting Started
-
-Follow these steps to set up the project locally.
-
-### 1. Clone the Repository
-```bash
-git clone [https://github.com/divyviradiya1501/photo-flux.git](https://github.com/divyviradiya1501/photo-flux.git)
-cd photo-flux
-```
-
-### 2. Install Dependencies
-Install the required node modules defined in package.json.
-
-```Bash
-
-npm install
-```
 ### 3. Run in Development Mode
 Start the Electron app with hot-reload enabled for both the Main and Renderer processes.
 
@@ -148,13 +107,13 @@ npm run preview
 
 3. Plan:
 
-Choose your Organization Mode (Year or Year/Month).
+        Choose your Organization Mode (Year or Year/Month).
 
-Select a Destination (Default suffix or Custom folder).
+        Select a Destination (Default suffix or Custom folder).
 
-Choose Action (Move or Copy).
+        Choose Action (Move or Copy).
 
-Review the file list for "Ready", "Duplicate", or "Error" statuses.
+        Review the file list for "Ready", "Duplicate", or "Error" statuses.
 
 4. Execute: Click "Start Organization" to process the files. Watch the circular progress bar as files are processed.
 
