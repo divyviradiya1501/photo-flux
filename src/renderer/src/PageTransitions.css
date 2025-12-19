@@ -1,0 +1,38 @@
+/* Page Transition Animations */
+
+.view-container {
+    height: 100%;
+    width: 100%;
+}
+
+.view-enter {
+    animation: fadeSlideIn 0.4s ease-out forwards;
+}
+
+.view-exit {
+    animation: fadeSlideOut 0.2s ease-in forwards;
+}
+
+@keyframes fadeSlideIn {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes fadeSlideOut {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+}
