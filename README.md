@@ -141,4 +141,4 @@ Distributed under the MIT License. See LICENSE for more information.
 ## 👤 Author
 Photo Flux Team
 
-GitHub: @divyviradiya1501
+GitHub: [divyviradiya](https://github.com/divyviradiya1501)
