@@ -9,24 +9,23 @@ export const TitleBar: React.FC = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                paddingLeft: 16, // Keep left padding for branding
-                paddingRight: 0, // Fix: Remove right padding so controls are flush
-                background: 'rgba(0,0,0,0.2)',
-                backdropFilter: 'blur(10px)',
-                WebkitAppRegion: 'drag', // Electron drag area
-                borderBottom: '1px solid rgba(255,255,255,0.05)',
+                paddingLeft: 16,
+                paddingRight: 0,
+                background: 'var(--bg-secondary)',
+                WebkitAppRegion: 'drag',
+                borderBottom: '1px solid var(--glass-border)',
                 zIndex: 9999
             } as any}
         >
-            {/* Branding - Fix 9 */}
+            {/* Branding */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 12, height: 12, borderRadius: '50%', background: 'var(--accent-gradient)' }}></div>
-                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', letterSpacing: '0.5px' }}>
+                <div style={{ width: 10, height: 10, borderRadius: 3, background: 'var(--text-primary)' }}></div>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.5px' }}>
                     PHOTO FLUX
                 </span>
             </div>
 
-            {/* Custom Controls - Fix 9 */}
+            {/* Custom Controls */}
             <div style={{ display: 'flex', WebkitAppRegion: 'no-drag' } as any}>
                 <button
                     onClick={() => window.api.windowControl('minimize')}
@@ -38,7 +37,7 @@ export const TitleBar: React.FC = () => {
                     onClick={() => window.api.windowControl('maximize')}
                     className="titlebar-btn"
                 >
-                    <Square size={12} />
+                    <Square size={11} />
                 </button>
                 <button
                     onClick={() => window.api.windowControl('close')}
@@ -54,17 +53,16 @@ export const TitleBar: React.FC = () => {
                     height: 32px;
                     border: none;
                     background: transparent;
-                    color: var(--text-secondary);
+                    color: var(--text-muted);
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     cursor: pointer;
-                    transition: all 0.2s;
-                    border-radius: 4px;
+                    transition: all 0.1s;
                 }
                 .titlebar-btn:hover {
-                    background: rgba(255,255,255,0.1);
-                    color: white;
+                    background: rgba(255,255,255,0.06);
+                    color: var(--text-primary);
                 }
                 .titlebar-btn.close:hover {
                     background: #ef4444;

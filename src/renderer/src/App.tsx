@@ -17,18 +17,29 @@ function App(): JSX.Element {
     const [plan, setPlan] = useState<any[]>([]);
     const [isTransitioning, setIsTransitioning] = useState(false);
 
-    // Animated view transition - Fix 5: Prevent Double Animation
+    // Super fast view transition
     const changeView = (newView: ViewState, force = false) => {
         if (view === newView) return;
         if (isTransitioning && !force) {
             return;
         }
 
+        // Reset state when going back to scan or dashboard for fresh start
+        if (newView === 'scan') {
+            setScannedFiles([]);
+            setSelectedDir('');
+            setPlan([]);
+        } else if (newView === 'dashboard') {
+            setScannedFiles([]);
+            setSelectedDir('');
+            setPlan([]);
+        }
+
         setIsTransitioning(true);
         setTimeout(() => {
             setView(newView);
-            setTimeout(() => setIsTransitioning(false), 50); // Small delay to start fade-in
-        }, 300); // Wait for fade-out
+            setTimeout(() => setIsTransitioning(false), 30);
+        }, 100); // Fast fade-out
     };
 
     return (

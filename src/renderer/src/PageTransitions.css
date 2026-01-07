@@ -1,22 +1,24 @@
-/* Page Transition Animations */
+/* Page Transition Animations - Super Fast */
 
 .view-container {
     height: 100%;
     width: 100%;
 }
 
-.view-enter {
-    animation: fadeSlideIn 0.4s ease-out forwards;
+.fade-in {
+    opacity: 1;
+    transition: opacity 0.1s ease-out;
 }
 
-.view-exit {
-    animation: fadeSlideOut 0.2s ease-in forwards;
+.fade-out {
+    opacity: 0;
+    transition: opacity 0.1s ease-in;
 }
 
 @keyframes fadeSlideIn {
     from {
         opacity: 0;
-        transform: translateX(20px);
+        transform: translateX(8px);
     }
 
     to {
@@ -33,6 +35,45 @@
 
     to {
         opacity: 0;
-        transform: translateX(-10px);
+        transform: translateX(-4px);
+    }
+}
+
+/* Loading spinner */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.animate-spin {
+    animation: spin 0.8s linear infinite;
+}
+
+/* Progress bar loading animation */
+@keyframes progress-loading {
+    0% {
+        transform: translateX(-100%);
+    }
+    50% {
+        transform: translateX(150%);
+    }
+    100% {
+        transform: translateX(-100%);
+    }
+}
+
+/* Pop-in animation for completion */
+@keyframes pop-in {
+    0% {
+        transform: scale(0.5);
+        opacity: 0;
+    }
+    70% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
     }
 }

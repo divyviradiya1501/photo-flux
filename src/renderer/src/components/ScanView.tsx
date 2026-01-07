@@ -7,7 +7,7 @@ interface Props {
 }
 
 const ScanView: React.FC<Props> = ({ onBack, onScanComplete }) => {
-    const [status, setStatus] = useState<'IDLE' | 'SCANNING' | 'DONE'>('IDLE');
+    const [status, setStatus] = useState<'IDLE' | 'SCANNING' | 'SCAN_COMPLETE' | 'DONE'>('IDLE');
     const [dir, setDir] = useState<string>('');
     const [filesFound, setFilesFound] = useState<string[]>([]);
     const [scanPath, setScanPath] = useState<string>('');
@@ -15,12 +15,30 @@ const ScanView: React.FC<Props> = ({ onBack, onScanComplete }) => {
     // Use ref to keep a synchronous, always-accurate list for the completion callback
     const allFilesRef = useRef<string[]>([]);
     const dirRef = useRef<string>('');
+    const isMounted = useRef(true);
 
     // Use ref for the completion callback to avoid effect re-runs
     const onCompleteRef = useRef(onScanComplete);
     useEffect(() => {
         onCompleteRef.current = onScanComplete;
     }, [onScanComplete]);
+
+    // CRITICAL: Clear all listeners on mount - ensures fresh start for each scan session
+    useEffect(() => {
+        isMounted.current = true;
+
+        // Clear ALL listeners on mount to prevent stale events from previous sessions
+        window.api.removeAllListeners();
+
+        // Reset refs for fresh scan
+        allFilesRef.current = [];
+        dirRef.current = '';
+
+        return () => {
+            isMounted.current = false;
+            window.api.removeAllListeners();
+        };
+    }, []);
 
     useEffect(() => {
         let buffer: string[] = [];
@@ -44,14 +62,17 @@ const ScanView: React.FC<Props> = ({ onBack, onScanComplete }) => {
         };
 
         const handleDone = () => {
-            updateUI(); // Final sync for the UI
-            setStatus('DONE');
+            updateUI();
+            // Show scan complete screen for a moment
+            setStatus('SCAN_COMPLETE');
 
-            // Crucial: Use the ref here to ensure we have ALL files immediately
-            // and don't rely on the next render cycle's state.
+            // After showing completion, proceed to metadata
             setTimeout(() => {
-                onCompleteRef.current(allFilesRef.current, dirRef.current);
-            }, 800);
+                setStatus('DONE');
+                setTimeout(() => {
+                    onCompleteRef.current(allFilesRef.current, dirRef.current);
+                }, 500);
+            }, 1200);
         };
 
         const handleError = (err: string) => {
@@ -59,7 +80,6 @@ const ScanView: React.FC<Props> = ({ onBack, onScanComplete }) => {
             setStatus('IDLE');
         };
 
-        // Use direct ipcRenderer to allow cleanup
         window.api.onScanResult(handleResult);
         window.api.onScanDone(handleDone);
         window.api.onScanError(handleError);
@@ -68,16 +88,53 @@ const ScanView: React.FC<Props> = ({ onBack, onScanComplete }) => {
             clearInterval(interval);
             window.api.removeScanListeners();
         };
-    }, []); // Empty dependency array = stable listeners
+    }, []);
 
     const handleSelectDir = async () => {
+        // Clear ALL listeners to prevent duplicate events from any source
+        window.api.removeAllListeners();
+
         const selected = await window.api.openDirectory();
-        if (selected) {
+        if (selected && isMounted.current) {
+            // Reset all state for a fresh scan
             setDir(selected);
             dirRef.current = selected;
-            allFilesRef.current = []; // Reset ref
-            setFilesFound([]); // Reset state
+            allFilesRef.current = [];
+            setFilesFound([]);
+            setScanPath('');
             setStatus('SCANNING');
+
+            // Re-register listeners after clearing
+            window.api.onScanResult((path: string) => {
+                if (!isMounted.current) return;
+                allFilesRef.current.push(path);
+                setFilesFound(prev => [...prev, path]);
+                setScanPath(path);
+            });
+
+            window.api.onScanDone(() => {
+                if (!isMounted.current) return;
+                setStatus('SCAN_COMPLETE');
+                setTimeout(() => {
+                    if (!isMounted.current) return;
+                    setStatus('DONE');
+                    setTimeout(() => {
+                        if (isMounted.current) {
+                            onCompleteRef.current(allFilesRef.current, dirRef.current);
+                        }
+                    }, 500);
+                }, 1200);
+            });
+
+            window.api.onScanError((err: string) => {
+                console.error('Scan error:', err);
+                if (isMounted.current) {
+                    setStatus('IDLE');
+                }
+            });
+
+            // Start the scan with the selected directory
+            console.log('Starting scan for directory:', selected);
             window.api.startScan(selected);
         }
     };
@@ -88,70 +145,73 @@ const ScanView: React.FC<Props> = ({ onBack, onScanComplete }) => {
             <button
                 onClick={onBack}
                 style={{
-                    background: 'var(--bg-glass)',
+                    background: 'transparent',
                     border: '1px solid var(--glass-border)',
-                    color: 'var(--text-secondary)',
+                    color: 'var(--text-muted)',
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: 8,
+                    gap: 6,
                     marginBottom: 24,
-                    padding: '10px 16px',
+                    padding: '8px 14px',
                     borderRadius: 'var(--radius-md)',
-                    backdropFilter: 'blur(10px)',
                     width: 'fit-content',
-                    transition: 'all 0.2s'
+                    fontSize: '0.85rem',
+                    transition: 'all 0.1s'
                 }}
                 onMouseOver={(e) => {
                     e.currentTarget.style.background = 'var(--bg-glass-hover)';
                     e.currentTarget.style.color = 'var(--text-primary)';
                 }}
                 onMouseOut={(e) => {
-                    e.currentTarget.style.background = 'var(--bg-glass)';
-                    e.currentTarget.style.color = 'var(--text-secondary)';
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.color = 'var(--text-muted)';
                 }}
             >
-                <ArrowLeft size={18} /> Back
+                <ArrowLeft size={16} /> Back
             </button>
 
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                 {status === 'IDLE' && (
                     <div style={{ textAlign: 'center' }} className="animate-fade-in">
-                        <FolderOpen
-                            size={64}
-                            style={{
-                                marginBottom: 24,
-                                filter: 'drop-shadow(0 0 20px var(--accent-glow))'
-                            }}
-                            color="var(--accent-primary)"
-                            className="animate-float"
-                        />
-                        <h2 style={{ marginBottom: 12 }}>Select Directory</h2>
-                        <p style={{ color: 'var(--text-secondary)', marginBottom: 32 }}>
-                            Choose the folder or drive containing photos to organize
+                        <div style={{
+                            width: 80,
+                            height: 80,
+                            borderRadius: 20,
+                            background: 'var(--bg-elevated)',
+                            border: '1px solid var(--glass-border)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto 24px'
+                        }}>
+                            <FolderOpen size={40} color="var(--text-primary)" />
+                        </div>
+                        <h2 style={{ marginBottom: 8, fontSize: '1.5rem' }}>Select Directory</h2>
+                        <p style={{ color: 'var(--text-muted)', marginBottom: 32, fontSize: '0.9rem' }}>
+                            Choose the folder containing photos to organize
                         </p>
                         <button
                             onClick={handleSelectDir}
                             style={{
-                                background: 'var(--accent-gradient)',
-                                color: 'white',
+                                background: 'var(--text-primary)',
+                                color: 'var(--bg-primary)',
                                 border: 'none',
-                                padding: '16px 40px',
-                                borderRadius: 'var(--radius-lg)',
-                                fontSize: '1.1rem',
+                                padding: '12px 32px',
+                                borderRadius: 'var(--radius-md)',
+                                fontSize: '0.95rem',
                                 fontWeight: '600',
-                                boxShadow: '0 4px 30px var(--accent-glow)',
-                                transition: 'all 0.3s ease'
+                                transition: 'all 0.1s'
                             }}
                             onMouseOver={(e) => {
-                                e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
-                                e.currentTarget.style.boxShadow = '0 8px 40px var(--accent-glow)';
+                                e.currentTarget.style.transform = 'translateY(-1px)';
+                                e.currentTarget.style.background = '#e4e4e7';
                             }}
                             onMouseOut={(e) => {
-                                e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                                e.currentTarget.style.boxShadow = '0 4px 30px var(--accent-glow)';
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.background = 'var(--text-primary)';
                             }}
                         >
-                            Browse Folder...
+                            Browse Folder
                         </button>
                     </div>
                 )}
@@ -159,80 +219,109 @@ const ScanView: React.FC<Props> = ({ onBack, onScanComplete }) => {
                 {status === 'SCANNING' && (
                     <div style={{ textAlign: 'center' }} className="animate-fade-in">
                         <Loader2
-                            size={64}
-                            style={{
-                                animation: 'spin 1s linear infinite',
-                                marginBottom: 24,
-                                filter: 'drop-shadow(0 0 20px var(--accent-glow))'
-                            }}
-                            color="var(--accent-primary)"
+                            size={48}
+                            style={{ marginBottom: 24 }}
+                            color="var(--text-primary)"
+                            className="animate-spin"
                         />
-                        <h2 style={{ marginBottom: 16 }}>Scanning...</h2>
-                        <div className="stat-value" style={{
-                            fontSize: '4rem',
+                        <h2 style={{ marginBottom: 16, fontSize: '1.4rem' }}>Scanning Directory</h2>
+                        <div style={{
+                            fontSize: '3rem',
+                            fontWeight: '700',
                             marginBottom: 8,
-                            animation: 'pulse-glow 1.5s ease-in-out infinite'
+                            color: 'var(--text-primary)'
                         }}>
                             {filesFound.length.toLocaleString()}
                         </div>
-                        <p style={{ color: 'var(--text-secondary)', marginBottom: 32 }}>images found</p>
+                        <p style={{ color: 'var(--text-muted)', marginBottom: 32, fontSize: '0.9rem' }}>images found</p>
 
-                        {/* Indeterminate Glass Progress Bar */}
-                        <div className="progress-container" style={{
-                            width: '300px',
-                            height: '6px',
+                        {/* Progress indicator */}
+                        <div style={{
+                            width: '280px',
+                            height: '4px',
                             margin: '0 auto 32px',
-                            background: 'var(--bg-glass)',
-                            overflow: 'hidden'
+                            background: 'var(--bg-elevated)',
+                            borderRadius: 2,
+                            overflow: 'hidden',
+                            position: 'relative'
                         }}>
-                            <div className="progress-bar" style={{
+                            <div style={{
                                 width: '40%',
+                                height: '100%',
+                                background: 'var(--text-primary)',
                                 position: 'absolute',
-                                animation: 'progress-loading 1.5s infinite ease-in-out',
-                                background: 'var(--accent-gradient)',
-                                boxShadow: '0 0 15px var(--accent-glow)'
+                                animation: 'progress-loading 1.5s infinite ease-in-out'
                             }}></div>
                         </div>
 
-                        {/* Glass path display */}
+                        {/* Current path display */}
                         <div style={{
-                            background: 'var(--bg-glass)',
+                            background: 'var(--bg-elevated)',
                             border: '1px solid var(--glass-border)',
                             borderRadius: 'var(--radius-md)',
-                            padding: '12px 24px',
-                            maxWidth: 600,
-                            backdropFilter: 'blur(15px)',
-                            boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+                            padding: '10px 20px',
+                            maxWidth: 500,
                             margin: '0 auto'
                         }}>
                             <p style={{
-                                color: 'var(--accent-primary)',
-                                fontSize: '0.85rem',
+                                color: 'var(--text-muted)',
+                                fontSize: '0.8rem',
                                 margin: 0,
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
                                 whiteSpace: 'nowrap',
-                                fontFamily: 'monospace',
-                                opacity: 0.8
+                                fontFamily: 'monospace'
                             }}>
-                                {scanPath || 'Initializing search...'}
+                                {scanPath || 'Starting scan...'}
                             </p>
                         </div>
                     </div>
                 )}
 
+                {status === 'SCAN_COMPLETE' && (
+                    <div style={{ textAlign: 'center' }} className="animate-fade-in">
+                        <div style={{
+                            width: 80,
+                            height: 80,
+                            borderRadius: '50%',
+                            background: 'var(--success-color)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto 24px',
+                            animation: 'pop-in 0.3s ease-out'
+                        }}>
+                            <CheckCircle2 size={40} color="white" />
+                        </div>
+                        <h2 style={{ color: 'var(--success-color)', marginBottom: 8, fontSize: '1.4rem' }}>
+                            Scan Complete
+                        </h2>
+                        <p style={{
+                            color: 'var(--text-primary)',
+                            fontSize: '2rem',
+                            fontWeight: '700',
+                            marginBottom: 8
+                        }}>
+                            {filesFound.length.toLocaleString()} images found
+                        </p>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                            Preparing metadata analysis...
+                        </p>
+                    </div>
+                )}
+
                 {status === 'DONE' && (
                     <div style={{ textAlign: 'center' }} className="animate-fade-in">
-                        <CheckCircle2
-                            size={64}
-                            style={{
-                                marginBottom: 24,
-                                filter: 'drop-shadow(0 0 20px rgba(34, 197, 94, 0.5))'
-                            }}
-                            color="var(--success-color)"
+                        <Loader2
+                            size={40}
+                            style={{ marginBottom: 20 }}
+                            color="var(--text-primary)"
+                            className="animate-spin"
                         />
-                        <h2 style={{ color: 'var(--success-color)', marginBottom: 8 }}>Scan Complete</h2>
-                        <p style={{ color: 'var(--text-secondary)' }}>Analyzing metadata...</p>
+                        <h2 style={{ marginBottom: 8, fontSize: '1.2rem' }}>Loading Metadata Analyzer</h2>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                            {filesFound.length.toLocaleString()} images ready for processing
+                        </p>
                     </div>
                 )}
             </div>

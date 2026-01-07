@@ -16,6 +16,7 @@ export interface IPhotoAPI {
     listSessions: () => Promise<string[]>;
     revertSession: (path: string) => Promise<any>;
     removeScanListeners: () => void;
+    removeAllListeners: () => void;
     windowControl: (action: 'minimize' | 'maximize' | 'close') => void;
 }
 
@@ -37,6 +38,13 @@ const api: IPhotoAPI = {
         ipcRenderer.removeAllListeners('scan:result');
         ipcRenderer.removeAllListeners('scan:done');
         ipcRenderer.removeAllListeners('scan:error');
+    },
+    removeAllListeners: () => {
+        ipcRenderer.removeAllListeners('scan:result');
+        ipcRenderer.removeAllListeners('scan:done');
+        ipcRenderer.removeAllListeners('scan:error');
+        ipcRenderer.removeAllListeners('plan:progress');
+        ipcRenderer.removeAllListeners('execute:progress');
     },
     windowControl: (action: string) => ipcRenderer.send(`window:${action}`)
 }

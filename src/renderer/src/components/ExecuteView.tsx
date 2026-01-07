@@ -14,14 +14,29 @@ const ExecuteView: React.FC<Props> = ({ plan, onFinish }) => {
     const [status, setStatus] = useState<'RUNNING' | 'DONE'>('RUNNING');
     const [lastProcessed, setLastProcessed] = useState<string[]>([]);
 
-    // Fix stale closure for onFinish in async effect
+    // Track if component is mounted
+    const isMounted = useRef(true);
+    const hasExecuted = useRef(false);
+
     const onFinishRef = useRef(onFinish);
     useEffect(() => {
         onFinishRef.current = onFinish;
     }, [onFinish]);
 
     useEffect(() => {
+        isMounted.current = true;
+
+        // CRITICAL: Clear all previous listeners before registering new ones
+        // This prevents duplicate events from previous sessions
+        window.api.removeAllListeners();
+
+        // Only execute once
+        if (hasExecuted.current) return;
+        hasExecuted.current = true;
+
+        // Register progress listener
         window.api.onExecuteProgress((data) => {
+            if (!isMounted.current) return;
             setProgress(data.current);
             setStats({ success: data.success, failed: data.failed });
             if (data.lastFile) {
@@ -29,86 +44,109 @@ const ExecuteView: React.FC<Props> = ({ plan, onFinish }) => {
             }
         });
 
+        // Execute the plan
         window.api.executePlan(plan, settings.operationMode).then((result) => {
+            if (!isMounted.current) return;
+
+            // Use the FINAL result from executePlan, not from progress events
+            // This is the authoritative count
+            console.log('Execution complete:', result);
             setStats(result);
             setProgress(plan.length);
             setStatus('DONE');
-            setTimeout(() => onFinishRef.current(), 2000);
+
+            // Clean up listeners immediately after completion
+            window.api.removeAllListeners();
+
+            setTimeout(() => {
+                if (isMounted.current) {
+                    onFinishRef.current();
+                }
+            }, 2000);
+        }).catch((err) => {
+            console.error('Execution error:', err);
+            if (isMounted.current) {
+                setStatus('DONE');
+            }
         });
-    }, [plan, settings.operationMode]);
+
+        // Cleanup on unmount
+        return () => {
+            isMounted.current = false;
+            window.api.removeAllListeners();
+        };
+    }, []); // Empty dependency array - only run once on mount
 
     const percentage = Math.round((progress / plan.length) * 100) || 0;
 
     return (
         <div style={{ padding: 40, height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }} className="animate-fade-in">
             {status === 'RUNNING' && (
-                <div style={{ textAlign: 'center', width: '100%', maxWidth: 700 }}>
-                    <div style={{ position: 'relative', display: 'inline-block', marginBottom: 40 }}>
-                        {/* Circular Progress (CSS only) */}
-                        <svg width="120" height="120" viewBox="0 0 120 120">
-                            <circle cx="60" cy="60" r="54" fill="none" stroke="var(--bg-glass)" strokeWidth="8" />
-                            <circle cx="60" cy="60" r="54" fill="none" stroke="var(--accent-primary)" strokeWidth="8"
-                                strokeDasharray="339.29"
-                                strokeDashoffset={339.29 * (1 - percentage / 100)}
+                <div style={{ textAlign: 'center', width: '100%', maxWidth: 600 }}>
+                    <div style={{ position: 'relative', display: 'inline-block', marginBottom: 32 }}>
+                        <svg width="100" height="100" viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" r="45" fill="none" stroke="var(--bg-elevated)" strokeWidth="6" />
+                            <circle cx="50" cy="50" r="45" fill="none" stroke="var(--text-primary)" strokeWidth="6"
+                                strokeDasharray="282.74"
+                                strokeDashoffset={282.74 * (1 - percentage / 100)}
                                 strokeLinecap="round"
-                                style={{ transition: 'stroke-dashoffset 0.5s ease-out', filter: 'drop-shadow(0 0 8px var(--accent-glow))' }}
+                                style={{ transition: 'stroke-dashoffset 0.3s ease-out', transform: 'rotate(-90deg)', transformOrigin: 'center' }}
                             />
                         </svg>
-                        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: '1.5rem', fontWeight: 'bold' }}>
+                        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: '1.25rem', fontWeight: 'bold' }}>
                             {percentage}%
                         </div>
                     </div>
 
-                    <h2 style={{ marginBottom: 12 }}>Organizing...</h2>
-                    <p style={{ color: 'var(--text-secondary)', marginBottom: 32 }}>
+                    <h2 style={{ marginBottom: 8, fontSize: '1.3rem' }}>Organizing...</h2>
+                    <p style={{ color: 'var(--text-muted)', marginBottom: 28, fontSize: '0.9rem' }}>
                         Processing {progress.toLocaleString()} / {plan.length.toLocaleString()}
                     </p>
 
                     {/* Live Feed */}
                     <div style={{
-                        background: 'var(--bg-glass)',
+                        background: 'var(--bg-elevated)',
                         border: '1px solid var(--glass-border)',
-                        borderRadius: 'var(--radius-lg)',
-                        padding: '20px',
-                        height: '160px',
-                        marginBottom: 40,
+                        borderRadius: 'var(--radius-md)',
+                        padding: '16px',
+                        height: '140px',
+                        marginBottom: 32,
                         textAlign: 'left',
-                        backdropFilter: 'blur(20px)',
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: 8,
+                        gap: 6,
                         overflow: 'hidden'
                     }}>
                         {lastProcessed.map((file, i) => (
                             <div key={i} style={{
-                                color: i === 0 ? 'var(--accent-primary)' : 'var(--text-muted)',
-                                opacity: 1 - i * 0.2,
-                                fontSize: '0.9rem',
+                                color: i === 0 ? 'var(--text-primary)' : 'var(--text-muted)',
+                                opacity: 1 - i * 0.18,
+                                fontSize: '0.85rem',
                                 whiteSpace: 'nowrap',
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
-                                transform: `translateX(${i * 2}px)`,
-                                transition: 'all 0.3s'
+                                transition: 'all 0.15s'
                             }}>
-                                {i === 0 && '⚡ '} {file.split(/[\\/]/).pop()}
+                                {i === 0 && <span style={{ color: 'var(--success-color)' }}>● </span>}
+                                {file.split(/[\\/]/).pop()}
                             </div>
                         ))}
                         {lastProcessed.length === 0 && (
-                            <div style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: 50 }}>
-                                Starting engine...
+                            <div style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: 50, fontSize: '0.85rem' }}>
+                                Starting...
                             </div>
                         )}
                     </div>
 
                     {/* Stats */}
-                    <div style={{ display: 'flex', gap: 60, justifyContent: 'center' }}>
-                        <div className="stat-card" style={{ background: 'transparent', border: 'none', boxShadow: 'none' }}>
-                            <div className="stat-value" style={{ fontSize: '2.5rem', color: 'var(--success-color)' }}>{stats.success.toLocaleString()}</div>
-                            <div className="stat-label">Success</div>
+                    <div style={{ display: 'flex', gap: 48, justifyContent: 'center' }}>
+                        <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--success-color)' }}>{stats.success.toLocaleString()}</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Success</div>
                         </div>
-                        <div className="stat-card" style={{ background: 'transparent', border: 'none', boxShadow: 'none' }}>
-                            <div className="stat-value" style={{ fontSize: '2.5rem', color: 'var(--danger-color)' }}>{stats.failed.toLocaleString()}</div>
-                            <div className="stat-label">Failed</div>
+                        <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--danger-color)' }}>{stats.failed.toLocaleString()}</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Failed</div>
                         </div>
                     </div>
                 </div>
@@ -117,23 +155,34 @@ const ExecuteView: React.FC<Props> = ({ plan, onFinish }) => {
             {status === 'DONE' && (
                 <div style={{ textAlign: 'center' }} className="animate-fade-in">
                     <div style={{
-                        width: 100,
-                        height: 100,
+                        width: 80,
+                        height: 80,
                         borderRadius: '50%',
                         background: 'var(--success-color)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        margin: '0 auto 32px',
-                        boxShadow: '0 0 40px rgba(34, 197, 94, 0.6)',
-                        animation: 'pop-in 0.5s cubic-bezier(0.26, 0.53, 0.74, 1.48)'
+                        margin: '0 auto 24px',
+                        animation: 'pop-in 0.3s ease-out'
                     }}>
-                        <CheckCircle color="white" size={60} />
+                        <CheckCircle color="white" size={44} />
                     </div>
-                    <h1 style={{ fontSize: '3rem', marginBottom: 12 }}>All Done!</h1>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem' }}>
-                        Your photos are perfectly organized.
+                    <h1 style={{ fontSize: '2rem', marginBottom: 8, color: 'var(--text-primary)' }}>All Done!</h1>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '1rem' }}>
+                        Your photos are organized.
                     </p>
+                    <div style={{ marginTop: 20, display: 'flex', gap: 32, justifyContent: 'center' }}>
+                        <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--success-color)' }}>{stats.success.toLocaleString()}</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Successful</div>
+                        </div>
+                        {stats.failed > 0 && (
+                            <div style={{ textAlign: 'center' }}>
+                                <div style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--danger-color)' }}>{stats.failed.toLocaleString()}</div>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Failed</div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
         </div>

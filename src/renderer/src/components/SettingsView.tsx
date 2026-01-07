@@ -1,201 +1,318 @@
-import React from 'react';
-import { ArrowLeft, RotateCcw, Settings2, FolderCog, FileText, Copy, Folder } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, RotateCcw, Settings2, FolderCog, FileText, Copy, Folder, ChevronDown, Check } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
 
 interface Props {
     onBack: () => void;
 }
 
+// Reusable Select component
+const Select: React.FC<{
+    value: string;
+    onChange: (val: string) => void;
+    options: { value: string; label: string; description?: string }[];
+}> = ({ value, onChange, options }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const selectedLabel = options.find(o => o.value === value)?.label || value;
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (isOpen && !(event.target as Element).closest('.settings-select')) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [isOpen]);
+
+    return (
+        <div className="settings-select" style={{ position: 'relative', width: '100%' }}>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                style={{
+                    width: '100%',
+                    background: 'var(--bg-glass)',
+                    border: isOpen ? '1px solid var(--text-muted)' : '1px solid var(--glass-border)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '10px 14px',
+                    color: 'var(--text-primary)',
+                    fontSize: '0.9rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    transition: 'all 0.1s'
+                }}
+            >
+                {selectedLabel}
+                <ChevronDown size={16} style={{
+                    transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.15s',
+                    color: 'var(--text-muted)'
+                }} />
+            </button>
+
+            {isOpen && (
+                <div style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 4px)',
+                    left: 0,
+                    right: 0,
+                    background: 'var(--bg-elevated)',
+                    border: '1px solid var(--glass-border)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: 4,
+                    zIndex: 100,
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.4)'
+                }}>
+                    {options.map(opt => (
+                        <div
+                            key={opt.value}
+                            onClick={() => {
+                                onChange(opt.value);
+                                setIsOpen(false);
+                            }}
+                            style={{
+                                padding: '10px 12px',
+                                fontSize: '0.9rem',
+                                color: value === opt.value ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                background: value === opt.value ? 'var(--bg-glass-hover)' : 'transparent',
+                                borderRadius: 'var(--radius-sm)',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                transition: 'background 0.1s'
+                            }}
+                            onMouseEnter={(e) => {
+                                if (value !== opt.value) e.currentTarget.style.background = 'var(--bg-glass)';
+                            }}
+                            onMouseLeave={(e) => {
+                                if (value !== opt.value) e.currentTarget.style.background = 'transparent';
+                            }}
+                        >
+                            <div>
+                                <div>{opt.label}</div>
+                                {opt.description && (
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                                        {opt.description}
+                                    </div>
+                                )}
+                            </div>
+                            {value === opt.value && <Check size={16} color="var(--success-color)" />}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 const SettingsView: React.FC<Props> = ({ onBack }) => {
     const { settings, updateSettings, resetSettings } = useSettings();
 
     return (
-        <div style={{ padding: '10px 40px', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }} className="animate-fade-in">
-            {/* Back Button */}
-            <button
-                onClick={onBack}
-                style={{
-                    background: 'var(--bg-glass)',
-                    border: '1px solid var(--glass-border)',
-                    color: 'var(--text-secondary)',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    marginBottom: 8,
-                    padding: '6px 12px',
-                    borderRadius: 'var(--radius-md)',
-                    backdropFilter: 'blur(10px)',
-                    width: 'fit-content',
-                    fontSize: '0.85rem',
-                    transition: 'all 0.2s'
-                }}
-                onMouseOver={(e) => {
-                    e.currentTarget.style.background = 'var(--bg-glass-hover)';
-                    e.currentTarget.style.color = 'var(--text-primary)';
-                }}
-                onMouseOut={(e) => {
-                    e.currentTarget.style.background = 'var(--bg-glass)';
-                    e.currentTarget.style.color = 'var(--text-secondary)';
-                }}
-            >
-                <ArrowLeft size={14} /> Back
-            </button>
-
+        <div style={{ padding: '24px 40px', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }} className="animate-fade-in">
             {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                <Settings2 size={20} color="var(--accent-primary)" />
-                <h2 style={{ margin: 0, fontSize: '1.2rem' }}>Settings</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
+                <button
+                    onClick={onBack}
+                    style={{
+                        background: 'transparent',
+                        border: '1px solid var(--glass-border)',
+                        color: 'var(--text-muted)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 36,
+                        height: 36,
+                        borderRadius: 'var(--radius-md)',
+                        transition: 'all 0.1s'
+                    }}
+                    onMouseOver={(e) => {
+                        e.currentTarget.style.background = 'var(--bg-glass-hover)';
+                        e.currentTarget.style.color = 'var(--text-primary)';
+                    }}
+                    onMouseOut={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                        e.currentTarget.style.color = 'var(--text-muted)';
+                    }}
+                >
+                    <ArrowLeft size={18} />
+                </button>
+                <div>
+                    <h2 style={{ margin: 0, fontSize: '1.4rem', display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <Settings2 size={22} color="var(--text-primary)" />
+                        Settings
+                    </h2>
+                    <p style={{ color: 'var(--text-muted)', margin: '2px 0 0 0', fontSize: '0.85rem' }}>
+                        Configure organization preferences
+                    </p>
+                </div>
             </div>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: 12, fontSize: '0.85rem' }}>Customize how photos are organized</p>
 
-            {/* Settings Grid */}
-            <div
-                style={{
-                    flex: 1,
-                    minHeight: 0,
-                    overflowY: 'auto',
-                    paddingRight: 8, // Avoid scrollbar overlap
-                }}
-            >
-                <div style={{ maxWidth: 800, display: 'flex', flexDirection: 'column', gap: 16, padding: '10px 0' }}>
+            {/* Settings Grid - 2x2 Layout */}
+            <div style={{
+                flex: 1,
+                minHeight: 0,
+                overflowY: 'auto',
+                paddingRight: 8
+            }}>
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, 1fr)',
+                    gap: 16
+                }}>
 
-                    {/* Organization Mode */}
-                    <div className="glass-panel" style={{ padding: 16 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                            <FolderCog size={18} color="var(--accent-primary)" />
-                            <h3 style={{ margin: 0, fontSize: '1rem' }}>Folder Structure</h3>
+                    {/* Folder Structure */}
+                    <div style={{
+                        background: 'var(--bg-elevated)',
+                        border: '1px solid var(--glass-border)',
+                        borderRadius: 'var(--radius-lg)',
+                        padding: 20,
+                        display: 'flex',
+                        flexDirection: 'column'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                            <FolderCog size={18} color="var(--text-primary)" />
+                            <h3 style={{ margin: 0, fontSize: '0.95rem' }}>Folder Structure</h3>
                         </div>
-                        <p style={{ color: 'var(--text-secondary)', marginBottom: 12, fontSize: '0.85rem' }}>
-                            Choose how to organize photos into folders
+                        <p style={{ color: 'var(--text-muted)', marginBottom: 12, fontSize: '0.8rem', flex: 1 }}>
+                            How to organize photos into folders
                         </p>
-                        <div className="toggle-group" style={{ marginBottom: 0 }}>
-                            <button
-                                onClick={() => updateSettings({ organizationMode: 'year' })}
-                                className={`toggle-btn ${settings.organizationMode === 'year' ? 'active' : ''}`}
-                                style={{ padding: '6px 12px', fontSize: '0.85rem' }}
-                            >
-                                Year Only
-                            </button>
-                            <button
-                                onClick={() => updateSettings({ organizationMode: 'year-month' })}
-                                className={`toggle-btn ${settings.organizationMode === 'year-month' ? 'active' : ''}`}
-                                style={{ padding: '6px 12px', fontSize: '0.85rem' }}
-                            >
-                                Year / Month
-                            </button>
-                        </div>
+                        <Select
+                            value={settings.organizationMode}
+                            onChange={(v) => updateSettings({ organizationMode: v as 'year' | 'year-month' })}
+                            options={[
+                                { value: 'year', label: 'Year Only', description: 'Photos/2024/' },
+                                { value: 'year-month', label: 'Year & Month', description: 'Photos/2024/January/' }
+                            ]}
+                        />
                     </div>
 
-                    {/* Rename Mode */}
-                    <div className="glass-panel" style={{ padding: 16 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                            <FileText size={18} color="var(--accent-primary)" />
-                            <h3 style={{ margin: 0, fontSize: '1rem' }}>File Naming</h3>
+                    {/* File Naming */}
+                    <div style={{
+                        background: 'var(--bg-elevated)',
+                        border: '1px solid var(--glass-border)',
+                        borderRadius: 'var(--radius-lg)',
+                        padding: 20,
+                        display: 'flex',
+                        flexDirection: 'column'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                            <FileText size={18} color="var(--text-primary)" />
+                            <h3 style={{ margin: 0, fontSize: '0.95rem' }}>File Naming</h3>
                         </div>
-                        <p style={{ color: 'var(--text-secondary)', marginBottom: 12, fontSize: '0.85rem' }}>
-                            Keep original names or add date prefix
+                        <p style={{ color: 'var(--text-muted)', marginBottom: 12, fontSize: '0.8rem', flex: 1 }}>
+                            How to name the organized files
                         </p>
-                        <div className="toggle-group">
-                            <button
-                                onClick={() => updateSettings({ renameMode: 'original' })}
-                                className={`toggle-btn ${settings.renameMode === 'original' ? 'active' : ''}`}
-                                style={{ padding: '6px 12px', fontSize: '0.85rem' }}
-                            >
-                                Original Name
-                            </button>
-                            <button
-                                onClick={() => updateSettings({ renameMode: 'date-prefix' })}
-                                className={`toggle-btn ${settings.renameMode === 'date-prefix' ? 'active' : ''}`}
-                                style={{ padding: '6px 12px', fontSize: '0.85rem' }}
-                            >
-                                Date Prefix
-                            </button>
-                        </div>
+                        <Select
+                            value={settings.renameMode}
+                            onChange={(v) => updateSettings({ renameMode: v as 'original' | 'date-prefix' })}
+                            options={[
+                                { value: 'original', label: 'Keep Original Name', description: 'IMG_1234.jpg' },
+                                { value: 'date-prefix', label: 'Add Date Prefix', description: '2024-01-15_IMG_1234.jpg' }
+                            ]}
+                        />
                     </div>
 
-                    {/* Destination Section */}
-                    <div className="glass-panel" style={{ padding: 16 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                            <Folder size={18} color="var(--accent-primary)" />
-                            <h3 style={{ margin: 0, fontSize: '1rem' }}>Destination</h3>
+                    {/* Operation Mode */}
+                    <div style={{
+                        background: 'var(--bg-elevated)',
+                        border: '1px solid var(--glass-border)',
+                        borderRadius: 'var(--radius-lg)',
+                        padding: 20,
+                        display: 'flex',
+                        flexDirection: 'column'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                            <Copy size={18} color="var(--text-primary)" />
+                            <h3 style={{ margin: 0, fontSize: '0.95rem' }}>Operation Mode</h3>
                         </div>
-                        <p style={{ color: 'var(--text-secondary)', marginBottom: 12, fontSize: '0.85rem' }}>
-                            Choose where to save the organized photos
+                        <p style={{ color: 'var(--text-muted)', marginBottom: 12, fontSize: '0.8rem', flex: 1 }}>
+                            Choose between moving or copying files
                         </p>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <span style={{ fontSize: '0.9rem' }}>Use Custom Output Path</span>
-                                <div className="toggle-group" style={{ minWidth: 160 }}>
-                                    <button
-                                        onClick={() => updateSettings({ useCustomOutputPath: false })}
-                                        className={`toggle-btn ${!settings.useCustomOutputPath ? 'active' : ''}`}
-                                    >
-                                        Default
-                                    </button>
-                                    <button
-                                        onClick={() => updateSettings({ useCustomOutputPath: true })}
-                                        className={`toggle-btn ${settings.useCustomOutputPath ? 'active' : ''}`}
-                                    >
-                                        Custom
-                                    </button>
-                                </div>
+                        <Select
+                            value={settings.operationMode}
+                            onChange={(v) => updateSettings({ operationMode: v as 'copy' | 'move' })}
+                            options={[
+                                { value: 'copy', label: 'Copy Files', description: 'Keep original files intact' },
+                                { value: 'move', label: 'Move Files', description: 'Remove files from source' }
+                            ]}
+                        />
+                    </div>
+
+                    {/* Destination */}
+                    <div style={{
+                        background: 'var(--bg-elevated)',
+                        border: '1px solid var(--glass-border)',
+                        borderRadius: 'var(--radius-lg)',
+                        padding: 20,
+                        display: 'flex',
+                        flexDirection: 'column'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                            <Folder size={18} color="var(--text-primary)" />
+                            <h3 style={{ margin: 0, fontSize: '0.95rem' }}>Destination</h3>
+                        </div>
+                        <p style={{ color: 'var(--text-muted)', marginBottom: 12, fontSize: '0.8rem' }}>
+                            Where to save organized photos
+                        </p>
+                        <Select
+                            value={settings.useCustomOutputPath ? 'custom' : 'default'}
+                            onChange={(v) => updateSettings({ useCustomOutputPath: v === 'custom' })}
+                            options={[
+                                { value: 'default', label: 'Default (Source + Suffix)', description: 'Create folder next to source' },
+                                { value: 'custom', label: 'Custom Path', description: 'Choose a specific folder' }
+                            ]}
+                        />
+
+                        {settings.useCustomOutputPath ? (
+                            <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+                                <input
+                                    type="text"
+                                    value={settings.customOutputPath}
+                                    readOnly
+                                    placeholder="Select folder..."
+                                    style={{
+                                        flex: 1,
+                                        background: 'var(--bg-glass)',
+                                        border: '1px solid var(--glass-border)',
+                                        borderRadius: 'var(--radius-md)',
+                                        padding: '8px 12px',
+                                        color: 'var(--text-secondary)',
+                                        fontSize: '0.85rem'
+                                    }}
+                                />
+                                <button
+                                    onClick={async () => {
+                                        const dir = await window.api.openDirectory();
+                                        if (dir) updateSettings({ customOutputPath: dir });
+                                    }}
+                                    style={{
+                                        background: 'var(--bg-glass)',
+                                        border: '1px solid var(--glass-border)',
+                                        borderRadius: 'var(--radius-md)',
+                                        padding: '0 12px',
+                                        color: 'var(--text-primary)',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 6,
+                                        fontSize: '0.85rem',
+                                        transition: 'all 0.1s'
+                                    }}
+                                    onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--text-muted)'}
+                                    onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--glass-border)'}
+                                >
+                                    <Folder size={14} /> Browse
+                                </button>
                             </div>
-
-                            {settings.useCustomOutputPath && (
-                                <div style={{ display: 'flex', gap: 8 }}>
-                                    <input
-                                        type="text"
-                                        value={settings.customOutputPath}
-                                        readOnly
-                                        placeholder="Select a destination folder..."
-                                        style={{
-                                            flex: 1,
-                                            background: 'rgba(255,255,255,0.05)',
-                                            border: '1px solid var(--glass-border)',
-                                            borderRadius: 'var(--radius-md)',
-                                            padding: '10px 14px',
-                                            color: 'var(--text-secondary)',
-                                            fontSize: '0.9rem'
-                                        }}
-                                    />
-                                    <button
-                                        onClick={async () => {
-                                            const dir = await window.api.openDirectory();
-                                            if (dir) updateSettings({ customOutputPath: dir });
-                                        }}
-                                        style={{
-                                            background: 'var(--bg-glass)',
-                                            border: '1px solid var(--glass-border)',
-                                            borderRadius: 'var(--radius-md)',
-                                            padding: '0 16px',
-                                            color: 'var(--text-primary)',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 8,
-                                            transition: 'all 0.2s'
-                                        }}
-                                        onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--accent-primary)'}
-                                        onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--glass-border)'}
-                                    >
-                                        <Folder size={16} /> Browse
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Output Folder Suffix Section - Only if not using custom path */}
-                    {!settings.useCustomOutputPath && (
-                        <div className="glass-panel" style={{ padding: 16 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                                <FolderCog size={18} color="var(--accent-primary)" />
-                                <h3 style={{ margin: 0, fontSize: '1rem' }}>Output Folder Suffix</h3>
-                            </div>
-                            <p style={{ color: 'var(--text-secondary)', marginBottom: 12, fontSize: '0.85rem' }}>
-                                Suffix to add to the default output folder name (e.g., "Photos_Organized")
-                            </p>
-                            <div style={{ paddingRight: 2 }}>
+                        ) : (
+                            <div style={{ marginTop: 12 }}>
+                                <label style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: 4 }}>
+                                    Folder Suffix
+                                </label>
                                 <input
                                     type="text"
                                     value={settings.outputFolderSuffix}
@@ -209,70 +326,44 @@ const SettingsView: React.FC<Props> = ({ onBack }) => {
                                         borderRadius: 'var(--radius-md)',
                                         padding: '8px 12px',
                                         color: 'var(--text-primary)',
-                                        fontSize: '0.9rem',
-                                        backdropFilter: 'blur(10px)',
-                                        outline: 'none',
-                                        transition: 'all 0.2s'
+                                        fontSize: '0.85rem',
+                                        outline: 'none'
                                     }}
                                 />
                             </div>
-                        </div>
-                    )}
-
-                    {/* Operation Mode */}
-                    <div className="glass-panel" style={{ padding: 16 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                            <Copy size={18} color="var(--accent-primary)" />
-                            <h3 style={{ margin: 0, fontSize: '1rem' }}>Operation Mode</h3>
-                        </div>
-                        <div className="toggle-group">
-                            <button
-                                onClick={() => updateSettings({ operationMode: 'move' })}
-                                className={`toggle-btn ${settings.operationMode === 'move' ? 'active' : ''}`}
-                                style={{ padding: '6px 12px', fontSize: '0.85rem' }}
-                            >
-                                Move Files
-                            </button>
-                            <button
-                                onClick={() => updateSettings({ operationMode: 'copy' })}
-                                className={`toggle-btn ${settings.operationMode === 'copy' ? 'active' : ''}`}
-                                style={{ padding: '6px 12px', fontSize: '0.85rem' }}
-                            >
-                                Copy Files
-                            </button>
-                        </div>
+                        )}
                     </div>
                 </div>
             </div>
 
-            {/* Actions */}
-            <div style={{ marginTop: 16, display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+            {/* Footer Actions */}
+            <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'flex-end' }}>
                 <button
                     onClick={resetSettings}
                     style={{
-                        background: 'var(--bg-glass)',
-                        color: 'var(--text-primary)',
+                        background: 'transparent',
+                        color: 'var(--text-secondary)',
                         border: '1px solid var(--glass-border)',
-                        padding: '8px 16px',
+                        padding: '10px 20px',
                         borderRadius: 'var(--radius-md)',
-                        fontSize: '0.85rem',
-                        fontWeight: '600',
+                        fontSize: '0.9rem',
+                        fontWeight: '500',
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: 8,
-                        backdropFilter: 'blur(10px)',
-                        transition: 'all 0.2s'
+                        transition: 'all 0.1s',
+                        cursor: 'pointer'
                     }}
                     onMouseOver={(e) => {
                         e.currentTarget.style.background = 'var(--bg-glass-hover)';
-                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        e.currentTarget.style.color = 'var(--text-primary)';
                     }}
                     onMouseOut={(e) => {
-                        e.currentTarget.style.background = 'var(--bg-glass)';
-                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.background = 'transparent';
+                        e.currentTarget.style.color = 'var(--text-secondary)';
                     }}
                 >
-                    <RotateCcw size={18} />
+                    <RotateCcw size={16} />
                     Reset to Defaults
                 </button>
             </div>

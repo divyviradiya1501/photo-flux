@@ -15,6 +15,7 @@ interface IPhotoAPI {
     listSessions: () => Promise<string[]>;
     revertSession: (path: string) => Promise<any>;
     removeScanListeners: () => void;
+    removeAllListeners: () => void;
     windowControl: (action: 'minimize' | 'maximize' | 'close') => void;
 }
 

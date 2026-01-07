@@ -136,13 +136,15 @@ app.whenReady().then(() => {
     let success = 0;
     let failed = 0;
 
-    // We can emit progress events
+    // Ensure we have a valid operation mode
+    const mode: 'copy' | 'move' = operationMode === 'move' ? 'move' : 'copy';
+    console.log(`Executing with operation mode: ${mode}`);
+
     const window = BrowserWindow.getAllWindows()[0];
 
     for (let i = 0; i < plan.length; i++) {
       const item = plan[i];
       if (item.status === 'READY') {
-        const mode = operationMode || 'move'; // Default to move if not specified
         const result = fileOpsService.safeTransfer(
           item.sourcePath,
           item.targetPath,
@@ -152,7 +154,7 @@ app.whenReady().then(() => {
         else failed++;
       }
 
-      // Update progress every 5 updates (faster for smaller sets)
+      // Update progress every 5 updates
       if (i % 5 === 0 && window) {
         window.webContents.send('execute:progress', {
           current: i,
@@ -174,6 +176,7 @@ app.whenReady().then(() => {
       });
     }
 
+    console.log(`Execution complete: ${success} success, ${failed} failed`);
     return { success, failed };
   });
 
@@ -209,7 +212,25 @@ function scanDirectoryInProcess(dir: string, sender: Electron.WebContents) {
     'Windows', 'Program Files', 'Program Files (x86)', 'AppData',
     'WindowsApps', 'ProgramData', 'Temp'
   ]);
+
+  // Also skip folders that look like they were created by this app
+  const ORGANIZED_PATTERNS = ['_Organized', '_organized', 'Organized', 'organized'];
+
   let count = 0;
+
+  function shouldSkipDir(dirName: string): boolean {
+    // Skip hidden directories
+    if (dirName.startsWith('.')) return true;
+    // Skip forbidden system directories
+    if (FORBIDDEN_DIRS.has(dirName)) return true;
+    // Skip directories that look like organized output
+    for (const pattern of ORGANIZED_PATTERNS) {
+      if (dirName.endsWith(pattern) || dirName.includes(pattern)) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   function walk(currentDir: string) {
     try {
@@ -217,7 +238,7 @@ function scanDirectoryInProcess(dir: string, sender: Electron.WebContents) {
       for (const entry of entries) {
         const fullPath = join(currentDir, entry.name);
         if (entry.isDirectory()) {
-          if (!entry.name.startsWith('.') && !FORBIDDEN_DIRS.has(entry.name)) {
+          if (!shouldSkipDir(entry.name)) {
             walk(fullPath);
           }
         } else if (entry.isFile()) {
