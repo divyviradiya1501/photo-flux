@@ -3,6 +3,7 @@ node_modules/
 dist/
 out/
 dist-ssr/
+Photo-Flux-Future-Features.md/
 *.local
 
 # Logs
